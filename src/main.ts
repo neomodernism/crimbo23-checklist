@@ -1,10 +1,11 @@
-import { print, getMonsters, Monster, monsterFactoidsAvailable, itemDropsArray, haveSkill, getRevision } from "kolmafia";
+import { print, getMonsters, Monster, monsterFactoidsAvailable, itemDropsArray, haveSkill, getRevision, itemAmount } from "kolmafia";
 import { $locations, $monsters, $items, $skills, CombatLoversLocket, have } from "libram";
 
 function doMonster(
   monster: Monster,
   locketMonsters: Monster[],
-  hasLocket: boolean
+  hasLocket: boolean,
+  includeCounts: boolean
 ): boolean {
   const locketed = locketMonsters.includes(monster);
   const factoidsLeft = 3 - monsterFactoidsAvailable(monster, true);
@@ -14,28 +15,37 @@ function doMonster(
   const haveDrops = drops.filter(each => have(each));
   const needDrops = drops.filter(each => !have(each));
 
+  let textColor = 'black';
+
   if ((locketed || !hasLocket) && factoidsLeft === 0 && needDrops.length === 0) {
-    print(`${monster.name} ... DONE`, 'green');
-    return true;
-  } 
+    textColor = 'green';
+    if (!includeCounts) {
+      print(`${monster.name} ... DONE`, textColor);
+      return true;
+    }
+  }
 
   print();
-  print(monster.name, 'black');
+  print(monster.name, textColor);
   if (hasLocket) {
-    if (locketed) print('&#9745; in locket', 'black');
+    if (locketed) print('&#9745; in locket', textColor);
     else print('&#9744; not in locket', 'red');
   }
   if (factoidsLeft === 0) {
-    print('&#9745; have all factoids', 'black');
+    print('&#9745; have all factoids', textColor);
   } else {
     print(`&#9744; ${factoidsLeft} factoids remaining`, 'red')
   }
-  haveDrops.forEach(each => print(`&#9745; have ${each.name}`, 'black'));
+  if (includeCounts) {
+    haveDrops.forEach(each => print(`&#9745; have ${each.name} (${itemAmount(each)})`, textColor));
+  } else {
+    haveDrops.forEach(each => print(`&#9745; have ${each.name}`, textColor));
+  }
   needDrops.forEach(each => print(`&#9744; need ${each.name}`, 'red'));
   return false;
 }
 
-export function main(): void {
+export function main(args: string): void {
   print('--------------------------------------')
   print('Crimbo 23 Checklist')
   print('--------------------------------------')
@@ -53,13 +63,14 @@ export function main(): void {
 
   print();
 
+  const includeCounts = args === "count";
   const locations = $locations`Abuela's Cottage (Contested), The Embattled Factory, The Bar At War, A Cafe Divided, The Armory Up In Arms`;
   const genericMonsters = $monsters`Crimbuccaneer military school dropout, Crimbuccaneer new recruit, Crimbuccaneer privateer, Elf Guard conscript, Elf Guard convict, Elf Guard private`;
   const locketMonsters = hasLocket ? CombatLoversLocket.unlockedLocketMonsters() : [ ];
 
   print('Generic Monsters', 'blue');
   genericMonsters.forEach(monster =>
-    doMonster(monster, locketMonsters, hasLocket)
+    doMonster(monster, locketMonsters, hasLocket, includeCounts)
   );
   print();
   print();
@@ -68,7 +79,7 @@ export function main(): void {
     print(location.toString(), 'blue');
 
     getMonsters(location).filter(monster => !genericMonsters.includes(monster)).forEach(monster =>
-      doMonster(monster, locketMonsters, hasLocket)
+      doMonster(monster, locketMonsters, hasLocket, includeCounts)
     );
     print();
     print();
